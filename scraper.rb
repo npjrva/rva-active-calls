@@ -8,15 +8,7 @@ require 'digest'
 u = URI "https://apps.richmondgov.com/applications/activecalls/Home/ActiveCalls?"
 dbfile = File.expand_path "~/.rva-activecalls/db.sqlite3"
 
-
-db = nil
-begin
-  db = SQLite3::Database.new dbfile
-rescue => e
-  $stderr.puts "Cannot open database at #{dbfile} because #{e.to_s}"
-  exit 1
-end
-
+db = SQLite3::Database.new dbfile
 r = Net::HTTP.get u
 
 count_new = 0

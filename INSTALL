@@ -1,0 +1,10 @@
+gem install google-maps
+gem install open_street_map
+
+cat >secrets.rb
+# Do not commit this to source control
+GOOGLE_MAPS_API_KEY = "xxx"
+OPEN_STREET_MAPS_EMAIL = 'foo@bar.com'
+^D
+
+
