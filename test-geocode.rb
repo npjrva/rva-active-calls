@@ -9,7 +9,7 @@ dbfile = File.expand_path "~/.rva-activecalls/db.sqlite3"
 db = SQLite3::Database.new dbfile
 
 geolocator = RichmondRephraser.new(
-              CacheAdapter.new(
+              MemCacheAdapter.new(
                 ThrottleAdaptor.new(10,
                   OpenStreetMapGeolocator.new(email=OPEN_STREET_MAPS_EMAIL))))
 
@@ -17,7 +17,7 @@ count_success = 0
 count_failure = 0
 
 File.open('failures.txt', 'w') do |fout|
-  db.execute("SELECT location FROM calls LIMIT 1000;").each do |row|
+  db.execute("SELECT location FROM calls ORDER BY time_received DESC LIMIT 1000;").each do |row|
     l = row[0]
     result = geolocator.query(l)
     puts "#{l} -> #{result}"
