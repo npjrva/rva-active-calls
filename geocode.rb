@@ -20,6 +20,8 @@ class BoundingBoxFilter
     @stat_count_reject = 0
   end
 
+  attr_reader :stat_count_queries, :stat_count_reject
+
   def query(q)
     @stat_count_queries += 1
     r = @geolocator.query(q)
@@ -68,6 +70,8 @@ class OpenStreetMapGeolocator
     @stat_count_hits = 0
   end
 
+  attr_reader :stat_count_queries, :stat_count_hits
+
   def query(q)
     @stat_count_queries += 1
 
@@ -92,6 +96,8 @@ class GoogleMapsGeolocator
     @stat_count_queries = 0
     @stat_count_hits = 0
   end
+
+  attr_reader :stat_count_queries, :stat_count_hits
 
   def query(q)
     @stat_count_queries += 1
@@ -120,6 +126,8 @@ class ThrottleAdaptor
 
     @stat_total_throttle = 0
   end
+
+  attr_reader :stat_total_throttle
 
   def query(q)
     now = Time.now
@@ -154,8 +162,8 @@ class RichmondRephraser
       q = $1.strip
 
     elsif q =~ /LL\((-?\d+):(\d+):(\d+\.\d+),(-?\d+):(\d+):(\d+\.\d+)\)/
-      lat_deg, lat_min, lat_sec = $1, $2, $3
-      lon_deg, lon_min, lon_sec = $4, $5, $6
+      lat_deg, lat_min, lat_sec = $4, $5, $6 # Not a bug, they list longitude first!
+      lon_deg, lon_min, lon_sec = $1, $2, $3
 
       lat_sign = lon_sign = 1
       lat_sign = -1 if lat_deg.to_f < 0
@@ -200,6 +208,8 @@ class MemCacheAdapter
     @stat_count_hits = 0
   end
 
+  attr_reader :stat_count_queries, :stat_count_hits
+
   def query(q)
     @stat_count_queries += 1
 
@@ -233,6 +243,8 @@ class DiskCacheAdapter
 
     #@db.trace { |sql| $stderr.puts "TRACE #{sql}" }
   end
+
+  attr_reader :stat_count_queries, :stat_count_hits
 
   def query(q)
     @stat_count_queries += 1

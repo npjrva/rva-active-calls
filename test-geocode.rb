@@ -22,7 +22,7 @@ count_success = 0
 count_failure = 0
 
 File.open('failures.txt', 'w') do |fout|
-  db.execute("SELECT location FROM calls ORDER BY time_received DESC LIMIT 3000;").each do |row|
+  db.execute("SELECT DISTINCT(location) FROM calls ORDER BY time_received DESC LIMIT 5000;").each do |row|
     l = row[0]
     result = geolocator.query(l)
     puts "#{l} -> #{result}"
