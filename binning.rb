@@ -7,15 +7,16 @@ require_relative './secrets.rb'
 MIN_TIME_INCLUSIVE = Time.parse("2022-08-17 12:08")
 MAX_TIME_EXCLUSIVE = Time.parse("2022-09-17 12:08")
 
-BIN_WIDTH=80
-BIN_HEIGHT=50
+BIN_WIDTH=160
+BIN_HEIGHT=100
 
 VIEW_N=37.60281
 VIEW_E=-77.385513
 VIEW_S=37.446553
 VIEW_W=-77.601173
 
-N_CENTERS=5
+N_CENTERS=10
+
 
 dbfile = File.expand_path "~/.rva-activecalls/db.sqlite3"
 cachefile = File.expand_path "~/.rva-activecalls/geolocation-cache.sqlite3"
@@ -30,6 +31,17 @@ geolocator = RichmondRephraser.new(
                       BoundingBoxFilter.new(ThrottleAdaptor.new(50,
                         GoogleMapsGeolocator.new(api_key=GOOGLE_MAPS_API_KEY)))
                     ]))))
+
+type2category = {}
+categories={}
+File.open("call-types.csv").each_line do |line|
+  if line =~ /^\d+,"?(.*?)"?,(\w+)$/
+    type = $1
+    cat = $2.upcase
+    type2category[type] = cat
+    categories[cat] = 1
+  end
+end
 
 def find_bin(lat,lon)
   bx =(BIN_WIDTH * (lon - VIEW_W) / (VIEW_E - VIEW_W)).to_i
@@ -162,10 +174,28 @@ File.open("bins.txt", "w") do |fout|
       if histo.empty?
         fout.puts "\tempty"
       else
-        # Sort descending by prevalence
-        flat = histo.to_a.sort {|a,b| b[-1] <=> a[-1] }
-        flat.each do |k,v|
-          fout.puts(sprintf("\t%5d\t%s", v, k))
+        cat2count = {}
+        cat2evt = {}
+
+        histo.each_pair do |type,count|
+          raise "Uncategorized type '#{type}'" unless type2category.include? type
+          cat = type2category[type]
+
+          cat2count[cat] ||= 0
+          cat2count[cat]  += count
+
+          cat2evt[cat] ||= []
+          cat2evt[cat].append( [type,count] )
+        end
+
+        cat2count.to_a.sort { |a,b| b[-1] <=> a[-1] }.each do |cat,cnt|
+          next if 1 > cnt
+
+          fout.puts(sprintf("\t%5d %s", cnt, cat))
+
+          cat2evt[cat].sort { |a,b| b[-1] <=> a[-1] }.each do |type,cnt|
+            fout.puts(sprintf("\t\t%5d %s", cnt, type))
+          end
         end
       end
 
