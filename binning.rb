@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 #
+require 'json'
 require 'sqlite3'
 require_relative './geocode.rb'
 require_relative './secrets.rb'
@@ -63,7 +64,7 @@ bins2evts = {}
 File.open('failures.txt', 'w') do |fout|
   db.execute("SELECT location, call_type "+
              "FROM calls "+
-             #"LIMIT 10000 "+
+             #"LIMIT 5000 "+
              ";"
              ).each do |row|
 
@@ -96,112 +97,138 @@ File.open('failures.txt', 'w') do |fout|
 end
 
 count_nonempty_bins = 0
-File.open("bins.txt", "w") do |fout|
-  # {{{ ASCII-art map
-  ranking = []
-  BIN_HEIGHT.times do |y|
-    BIN_WIDTH.times do |x|
-      bin = [x,y]
-      histo = bins2evts[bin] || {}
-      sums = histo.values.sum
+File.open("web/rva-geojson.js","w") do |jsout|
+  jsout.puts 'var rvaData = {"type":"FeatureCollection","features":['
+  File.open("bins.txt", "w") do |fout|
+    # {{{ ASCII-art map
+    ranking = []
+    BIN_HEIGHT.times do |y|
+      BIN_WIDTH.times do |x|
+        bin = [x,y]
+        histo = bins2evts[bin] || {}
+        sums = histo.values.sum
 
-      ranking.append( [sums,bin] )
+        ranking.append( [sums,bin] )
+      end
     end
-  end
-  ranking.sort!
+    ranking.sort!
 
-  min = ranking[0][0]
-  centers = []
-  N_CENTERS.times do
-    centers.append( ranking.pop )
-  end
-  max = ranking[-1][0]
+    min = ranking[0][0]
+    centers = []
+    N_CENTERS.times do
+      centers.append( ranking.pop )
+    end
+    max = ranking[-1][0]
 
-  glyphs = ".oO@#&".split //
+    glyphs = ".oO@#&".split //
 
-  BIN_HEIGHT.times do |yy|
-    y = BIN_HEIGHT - yy - 1
-    BIN_WIDTH.times do |x|
-      bin = [x,y]
-      histo = bins2evts[bin] || {}
-      sums = histo.values.sum
-      char = ' '
-      if 0 < sums
-        magnitude = [glyphs.size-1, (glyphs.size * (sums - min) / (max - min)).to_i].min
-        char = glyphs[magnitude]
-        centers.each_index do |idx|
-          b2 = centers[idx][1]
-          if bin == b2
-            char = (65 + idx).chr
+    BIN_HEIGHT.times do |yy|
+      y = BIN_HEIGHT - yy - 1
+      BIN_WIDTH.times do |x|
+        bin = [x,y]
+        histo = bins2evts[bin] || {}
+        sums = histo.values.sum
+        char = ' '
+        if 0 < sums
+          magnitude = [glyphs.size-1, (glyphs.size * (sums - min) / (max - min)).to_i].min
+          char = glyphs[magnitude]
+          centers.each_index do |idx|
+            b2 = centers[idx][1]
+            if bin == b2
+              char = (65 + idx).chr
+            end
           end
         end
+        fout.print char
       end
-      fout.print char
+      fout.puts '|'
     end
-    fout.puts '|'
-  end
 
-  centers.each_index do |idx|
-    sums = centers[idx][0]
-    bin = centers[idx][-1]
-    char = (65 + idx).chr
-    fout.puts "#{char} num events #{sums} at (#{bin[0]}, #{bin[1]})"
-    ( bins2locs[bin] || {}).keys.each do |loc|
-      fout.puts "\t#{loc}"
-    end
-    fout.puts
-
-
-  end
- 
-  #}}}
-
-  BIN_HEIGHT.times do |y|
-    BIN_WIDTH.times do |x|
-      bin = [x,y]
-      next unless bins2evts.include? bin
-      count_nonempty_bins += 1
-      histo = bins2evts[bin] || {}
-      sums = histo.values.sum
-
-      fout.puts "Bin #{x}, #{y}       #{sums} events / #{histo.size} types"
+    centers.each_index do |idx|
+      sums = centers[idx][0]
+      bin = centers[idx][-1]
+      char = (65 + idx).chr
+      fout.puts "#{char} num events #{sums} at (#{bin[0]}, #{bin[1]})"
       ( bins2locs[bin] || {}).keys.each do |loc|
         fout.puts "\t#{loc}"
       end
       fout.puts
 
 
-      if histo.empty?
-        fout.puts "\tempty"
-      else
-        cat2count = {}
-        cat2evt = {}
+    end
+   
+    #}}}
 
-        histo.each_pair do |type,count|
-          raise "Uncategorized type '#{type}'" unless type2category.include? type
-          cat = type2category[type]
+    BIN_HEIGHT.times do |y|
+      BIN_WIDTH.times do |x|
+        bin = [x,y]
+        next unless bins2evts.include? bin
+        count_nonempty_bins += 1
+        histo = bins2evts[bin] || {}
+        sums = histo.values.sum
 
-          cat2count[cat] ||= 0
-          cat2count[cat]  += count
-
-          cat2evt[cat] ||= []
-          cat2evt[cat].append( [type,count] )
+        fout.puts "Bin #{x}, #{y}       #{sums} events / #{histo.size} types"
+        ( bins2locs[bin] || {}).keys.each do |loc|
+          fout.puts "\t#{loc}"
         end
+        fout.puts
 
-        cat2count.to_a.sort { |a,b| b[-1] <=> a[-1] }.each do |cat,cnt|
-          next if 1 > cnt
 
-          fout.puts(sprintf("\t%5d %s", cnt, cat))
+        if histo.empty?
+          fout.puts "\tempty"
+        else
+          cat2count = {}
+          cat2evt = {}
 
-          cat2evt[cat].sort { |a,b| b[-1] <=> a[-1] }.each do |type,cnt|
-            fout.puts(sprintf("\t\t%5d %s", cnt, type))
+          histo.each_pair do |type,count|
+            raise "Uncategorized type '#{type}'" unless type2category.include? type
+            cat = type2category[type]
+
+            cat2count[cat] ||= 0
+            cat2count[cat]  += count
+
+            cat2evt[cat] ||= []
+            cat2evt[cat].append( [type,count] )
+          end
+
+          cat2count.to_a.sort { |a,b| b[-1] <=> a[-1] }.each do |cat,cnt|
+            next if 1 > cnt
+
+            fout.puts(sprintf("\t%5d %s", cnt, cat))
+
+            cat2evt[cat].sort { |a,b| b[-1] <=> a[-1] }.each do |type,cnt|
+              fout.puts(sprintf("\t\t%5d %s", cnt, type))
+            end
           end
         end
-      end
 
-      fout.puts "\n"
+        fout.puts "\n"
+
+        nn = VIEW_S + (y+1) * (VIEW_N - VIEW_S) / BIN_HEIGHT
+        ss = VIEW_S + (y+0) * (VIEW_N - VIEW_S) / BIN_HEIGHT
+
+        ee = VIEW_W + (x+0) * (VIEW_E - VIEW_W) / BIN_WIDTH
+        ww = VIEW_W + (x+1) * (VIEW_E - VIEW_W) / BIN_WIDTH
+
+        name = ( bins2locs[bin] || {}).keys.join "; "
+
+        json ={'type' => 'Feature',
+               'id' => "#{x}_#{y}",
+               'geometry' => {'type' => 'Polygon',
+                              'coordinates' => [[ [ee,nn], [ww,nn], [ww,ss], [ee,ss], [ee,nn] ]]},
+               'properties' => {'name' => name,
+                                'total' => sums,
+                               }
+              }
+
+
+        jsout.puts( JSON.dump(json) )
+        jsout.puts ","
+
+      end
     end
   end
+  jsout.puts ']}'
 end
 
 $stderr.puts "See #{count_nonempty_bins} bins in bins.txt"
