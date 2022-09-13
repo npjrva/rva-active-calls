@@ -34,6 +34,16 @@
 
 <script type="text/javascript" src="rva-geojson.js"></script>
 
+<fieldset>
+  <legend>Variables:</legend>
+  <label for="checkbox_crime"         onchange="changePlot()"><input type="checkbox" id="checkbox_crime"         checked />Crime</label>
+  <label for="checkbox_traffic"       onchange="changePlot()"><input type="checkbox" id="checkbox_traffic"       checked />Traffic</label>
+  <label for="checkbox_emergency"     onchange="changePlot()"><input type="checkbox" id="checkbox_emergency"     checked />Emergency</label>
+  <label for="checkbox_mental"        onchange="changePlot()"><input type="checkbox" id="checkbox_mental"        checked />Mental</label>
+  <label for="checkbox_discretionary" onchange="changePlot()"><input type="checkbox" id="checkbox_discretionary" checked />Discretionary</label>
+</fieldset>
+
+
 <script type="text/javascript">
 
 	var map = L.map('map').setView([37.5, -77.5], 11);
@@ -54,7 +64,12 @@
 
 	info.update = function (props) {
 		this._div.innerHTML = '<h4>RVA Active Calls Density</h4>' +  (props ?
-			'<b>' + props.name + '</b><br />' + props.total + ' total' : 'Hover over a cell');
+			('<b>' + props.name + '</b><br />' + props.total + ' total,<br/>'
+            + (props.Crime||0) + ' crime, '
+            + (props.Traffic||0) + ' traffic, '
+            + (props.Emergency||0) + ' emergency, '
+            + (props.Mental||0) + ' mental, '
+            + (props.Discretionary||0)+ ' discretionary') : 'Hover over a cell');
 	};
 
 	info.addTo(map);
@@ -73,15 +88,50 @@
 	}
 
 	function style(feature) {
+    var total = 0;
+    if( document.getElementById("checkbox_crime").checked )
+      total += (feature.properties.Crime||0);
+
+    if( document.getElementById("checkbox_traffic").checked )
+      total += (feature.properties.Traffic||0);
+
+    if( document.getElementById("checkbox_emergency").checked )
+      total += (feature.properties.Emergency||0);
+
+    if( document.getElementById("checkbox_mental").checked )
+      total += (feature.properties.Mental||0);
+
+    if( document.getElementById("checkbox_discretionary").checked )
+      total += (feature.properties.Discretionary||0);
+
 		return {
 			weight: 0,
 			opacity: 1,
 			//color: 'white',
 			//dashArray: '3',
 			fillOpacity: 0.7,
-			fillColor: getColor(feature.properties.total)
+			fillColor: getColor(total)
 		};
 	}
+
+	function nullstyle(feature) {
+    var total = 0;
+    total += (feature.properties.Crime||0);
+    total += (feature.properties.Traffic||0);
+    total += (feature.properties.Emergency||0);
+    total += (feature.properties.Mental||0);
+    total += (feature.properties.Discretionary||0);
+
+		return {
+			weight: 0,
+			opacity: 1,
+			//color: 'white',
+			//dashArray: '3',
+			fillOpacity: 0.7,
+			fillColor: 'black',
+		};
+	}
+
 
 	function highlightFeature(e) {
 		var layer = e.target;
@@ -144,14 +194,17 @@
 				from + (to ? '&ndash;' + to : '+'));
 		}
 
-		div.innerHTML = labels.join('<br>');
+		div.innerHTML = labels.join('<br/>');
 		return div;
 	};
 
 	legend.addTo(map);
 
-</script>
+  function changePlot() {
+    geojson.resetStyle();
+  }
 
+</script>
 
 
 </body>

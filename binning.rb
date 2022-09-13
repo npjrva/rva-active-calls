@@ -38,7 +38,7 @@ categories={}
 File.open("call-types.csv").each_line do |line|
   if line =~ /^\d+,"?(.*?)"?,(\w+)$/
     type = $1
-    cat = $2.upcase
+    cat = $2 #.upcase
     type2category[type] = cat
     categories[cat] = 1
   end
@@ -173,6 +173,23 @@ File.open("web/rva-geojson.js","w") do |jsout|
         end
         fout.puts
 
+        nn = VIEW_S + (y+1) * (VIEW_N - VIEW_S) / BIN_HEIGHT
+        ss = VIEW_S + (y+0) * (VIEW_N - VIEW_S) / BIN_HEIGHT
+
+        ee = VIEW_W + (x+0) * (VIEW_E - VIEW_W) / BIN_WIDTH
+        ww = VIEW_W + (x+1) * (VIEW_E - VIEW_W) / BIN_WIDTH
+
+        name = ( bins2locs[bin] || {}).keys.join "; "
+
+        json ={'type' => 'Feature',
+               'id' => "#{x}_#{y}",
+               'geometry' => {'type' => 'Polygon',
+                              'coordinates' => [[ [ee,nn], [ww,nn], [ww,ss], [ee,ss], [ee,nn] ]]},
+               'properties' => {'name' => name,
+                                'total' => sums,
+                               }
+              }
+
 
         if histo.empty?
           fout.puts "\tempty"
@@ -195,6 +212,7 @@ File.open("web/rva-geojson.js","w") do |jsout|
             next if 1 > cnt
 
             fout.puts(sprintf("\t%5d %s", cnt, cat))
+            json['properties'][cat] = cnt
 
             cat2evt[cat].sort { |a,b| b[-1] <=> a[-1] }.each do |type,cnt|
               fout.puts(sprintf("\t\t%5d %s", cnt, type))
@@ -203,23 +221,6 @@ File.open("web/rva-geojson.js","w") do |jsout|
         end
 
         fout.puts "\n"
-
-        nn = VIEW_S + (y+1) * (VIEW_N - VIEW_S) / BIN_HEIGHT
-        ss = VIEW_S + (y+0) * (VIEW_N - VIEW_S) / BIN_HEIGHT
-
-        ee = VIEW_W + (x+0) * (VIEW_E - VIEW_W) / BIN_WIDTH
-        ww = VIEW_W + (x+1) * (VIEW_E - VIEW_W) / BIN_WIDTH
-
-        name = ( bins2locs[bin] || {}).keys.join "; "
-
-        json ={'type' => 'Feature',
-               'id' => "#{x}_#{y}",
-               'geometry' => {'type' => 'Polygon',
-                              'coordinates' => [[ [ee,nn], [ww,nn], [ww,ss], [ee,ss], [ee,nn] ]]},
-               'properties' => {'name' => name,
-                                'total' => sums,
-                               }
-              }
 
 
         jsout.puts( JSON.dump(json) )
