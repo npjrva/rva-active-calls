@@ -5,9 +5,6 @@ require 'sqlite3'
 require_relative './geocode.rb'
 require_relative './secrets.rb'
 
-MIN_TIME_INCLUSIVE = Time.parse("2022-08-17 12:08")
-MAX_TIME_EXCLUSIVE = Time.parse("2022-09-17 12:08")
-
 BIN_WIDTH=160
 BIN_HEIGHT=100
 
@@ -61,43 +58,53 @@ bins2evts = {}
 
 #db.trace {|sql| $stderr.puts "Query #{sql}"}
 
-File.open('failures.txt', 'w') do |fout|
-  db.execute("SELECT location, call_type "+
-             "FROM calls "+
-             #"LIMIT 5000 "+
-             ";"
-             ).each do |row|
+first_time, last_time, count_events= nil
+db.execute("SELECT min(time_received), max(time_received), count(digest) " +
+           "FROM calls "+
+           ";"
+           ).each do |row|
+  first_time, last_time, count_events = row
+end
 
-    location = row[0]
-    call_type = row[1]
 
-    #$stderr.puts "Location #{location}"
+db.execute("SELECT location, call_type "+
+           "FROM calls "+
+           #"LIMIT 5000 "+
+           ";"
+           ).each do |row|
 
-    result = geolocator.query(location)
-    next if nil == result[0]
+  location = row[0]
+  call_type = row[1]
 
-    #$stderr.puts "--> latlon (#{result[2]}, #{result[3]})"
+  #$stderr.puts "Location #{location}"
 
-    bin = nil
-    begin
-      bin = find_bin(result[2], result[3])
+  result = geolocator.query(location)
+  next if nil == result[0]
 
-    rescue Exception => e
-      $stderr.puts "On #{location} result #{result.join ', '} is out of viewport"
-      next
-    end
+  #$stderr.puts "--> latlon (#{result[2]}, #{result[3]})"
 
-    #$stderr.puts "Bin (#{bin.join ', '}) += #{call_type}"
-    bins2locs[bin] ||= {}
-    bins2locs[bin][location] = 1
-    bins2evts[bin] ||= {}
-    bins2evts[bin][call_type] ||= 0
-    bins2evts[bin][call_type]  += 1
+  bin = nil
+  begin
+    bin = find_bin(result[2], result[3])
+
+  rescue Exception => e
+    $stderr.puts "On #{location} result #{result.join ', '} is out of viewport"
+    next
   end
+
+  #$stderr.puts "Bin (#{bin.join ', '}) += #{call_type}"
+  bins2locs[bin] ||= {}
+  bins2locs[bin][location] = 1
+  bins2evts[bin] ||= {}
+  bins2evts[bin][call_type] ||= 0
+  bins2evts[bin][call_type]  += 1
 end
 
 count_nonempty_bins = 0
 File.open("web/rva-geojson.js","w") do |jsout|
+  jsout.puts "var rvaFirst = '#{first_time}';"
+  jsout.puts "var rvaLast = '#{last_time}';"
+  jsout.puts "var rvaCount = '#{count_events}';"
   jsout.puts 'var rvaData = {"type":"FeatureCollection","features":['
   File.open("bins.txt", "w") do |fout|
     # {{{ ASCII-art map
