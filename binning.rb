@@ -66,7 +66,6 @@ db.execute("SELECT min(time_received), max(time_received), count(digest) " +
   first_time, last_time, count_events = row
 end
 
-
 db.execute("SELECT location, call_type "+
            "FROM calls "+
            #"LIMIT 5000 "+

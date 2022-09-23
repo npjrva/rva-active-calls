@@ -20,6 +20,23 @@ r.each_line do |line|
   line.strip!
   if line =~ /<\/tr>/
     unless cols.empty?
+      # Fix the date column.  Turns out sqlite will happily accept
+      # an incorrectly formatted datetime strubg in a datetime column
+      # and then fail to use it subsequently :(
+      #
+      # Provided: '08/17/2022 12:08'
+      # Want: '2022-08-17 12:08'
+      if cols[0] =~ /^\s*(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)\s*$/
+        m = $1.to_i
+        d = $2.to_i
+        y = $3.to_i
+
+        hh = $4.to_i
+        mm = $5.to_i
+
+        cols[0] = sprintf "%04d-%02d-%02d %02d:%02d", y, m, d, hh, mm
+      end
+
       cols = [ digester.hexdigest ] + cols
       begin
         db.execute("INSERT INTO calls VALUES (?, ?, ?, ?, ?, ?, ?, ?)", cols)
