@@ -29,7 +29,7 @@ class BoundingBoxFilter
     if nil != r[0]
       if r[2] > N || r[3] > E || r[2] < S || r[3] < W
         @stat_count_reject += 1
-        $stderr.puts "BBox rejects #{r.join ', '}"
+        $stderr.puts "\tBBox rejects #{r.join ', '}"
         return [nil,nil,nil,nil,nil]
       end
     end

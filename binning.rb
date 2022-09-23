@@ -88,7 +88,7 @@ db.execute("SELECT location, call_type "+
     bin = find_bin(result[2], result[3])
 
   rescue Exception => e
-    $stderr.puts "On #{location} result #{result.join ', '} is out of viewport"
+    $stderr.puts "\tOn #{location} result #{result.join ', '} is out of viewport"
     next
   end
 
@@ -101,6 +101,7 @@ db.execute("SELECT location, call_type "+
 end
 
 count_nonempty_bins = 0
+failed = false
 File.open("web/rva-geojson.js","w") do |jsout|
   jsout.puts "var rvaFirst = '#{first_time}';"
   jsout.puts "var rvaLast = '#{last_time}';"
@@ -205,14 +206,19 @@ File.open("web/rva-geojson.js","w") do |jsout|
           cat2evt = {}
 
           histo.each_pair do |type,count|
-            raise "Uncategorized type '#{type}'" unless type2category.include? type
-            cat = type2category[type]
 
-            cat2count[cat] ||= 0
-            cat2count[cat]  += count
+            if type2category.include? type
+              cat = type2category[type]
 
-            cat2evt[cat] ||= []
-            cat2evt[cat].append( [type,count] )
+              cat2count[cat] ||= 0
+              cat2count[cat]  += count
+
+              cat2evt[cat] ||= []
+              cat2evt[cat].append( [type,count] )
+            else
+              $stderr.puts "Uncategorized type '#{type}'"
+              failed = true # print all failures to reduce my iteration...
+            end
           end
 
           cat2count.to_a.sort { |a,b| b[-1] <=> a[-1] }.each do |cat,cnt|
@@ -238,6 +244,8 @@ File.open("web/rva-geojson.js","w") do |jsout|
   end
   jsout.puts ']}'
 end
+
+raise "Failed" if failed
 
 $stderr.puts "See #{count_nonempty_bins} bins in bins.txt"
 
