@@ -2,6 +2,7 @@
 #
 require 'json'
 require 'sqlite3'
+require 'date'
 require_relative './geocode.rb'
 require_relative './secrets.rb'
 
@@ -66,6 +67,9 @@ db.execute("SELECT min(time_received), max(time_received), count(digest) " +
   first_time, last_time, count_events = row
 end
 
+date_range_seconds = DateTime.parse(last_time).to_time - DateTime.parse(first_time).to_time
+date_range_days = date_range_seconds / (24 * 60 * 60)
+
 db.execute("SELECT location, call_type "+
            "FROM calls "+
            #"LIMIT 5000 "+
@@ -104,6 +108,7 @@ failed = false
 File.open("web/rva-geojson.js","w") do |jsout|
   jsout.puts "var rvaFirst = '#{first_time}';"
   jsout.puts "var rvaLast = '#{last_time}';"
+  jsout.puts "var rvaRangeDays = #{sprintf "%.1f", date_range_days};"
   jsout.puts "var rvaCount = '#{count_events}';"
   jsout.puts 'var rvaData = {"type":"FeatureCollection","features":['
   File.open("bins.txt", "w") do |fout|

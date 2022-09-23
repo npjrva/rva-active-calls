@@ -104,6 +104,9 @@
     if( document.getElementById("checkbox_discretionary").checked )
       total += (feature.properties.Discretionary||0);
 
+    // Normalize to 30-day period
+    total = total * 30.0 / rvaRangeDays;
+
 		return {
 			weight: 0,
 			opacity: 1,
