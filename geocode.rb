@@ -13,6 +13,13 @@ class BoundingBoxFilter
   S=37.1552
   W=-77.8422
 
+  # There is a certain failure mode under which a
+  # geolocation service will report the geographic center
+  # of Richmond.  Reject this too.
+  FORBIDDEN_LAT=37.5407246
+  FORBIDDEN_LON=-77.4360481
+  EPS=1.0e-5
+
   def initialize(geolocator)
     @geolocator = geolocator
 
@@ -32,6 +39,13 @@ class BoundingBoxFilter
         $stderr.puts "\tBBox rejects #{r.join ', '}"
         return [nil,nil,nil,nil,nil]
       end
+
+      if (r[2] - FORBIDDEN_LAT).abs < EPS && (r[3] - FORBIDDEN_LON).abs < EPS
+        @stat_count_reject += 1
+        $stderr.puts "\tForbidden center rejects #{r.join ', '}"
+        return [nil,nil,nil,nil,nil]
+      end
+
     end
 
     return r
@@ -183,6 +197,38 @@ class RichmondRephraser
               Time.now,
               lat_deg, lon_deg,
               'success']
+    elsif q =~ /@(MM|EXIT)\s+(\w+)\s+-\s+(\w+)\s+([NS]B)/
+      # {{{This is super-ugly
+      # but there aren't too many exits/mile markers on i95
+      exit_number = $2
+      interstate = $3
+      direction = $4
+
+      if interstate == 'I95' and direction == 'SB'
+        if exit_number == '69'
+          return ['i95-sb-69', Time.now, 37.468544, -77.427963, 'success']
+        elsif exit_number == '73'
+          return ['i95-sb-73', Time.now, 37.523969, -77.428119, 'success']
+        elsif exit_number == '74B'
+          return ['i95-sb-74b', Time.now, 37.536551, -77.429304, 'success']
+        elsif exit_number == '75'
+          return ['i95-sb-75', Time.now, 37.549183, -77.434523, 'success']
+        elsif exit_number == '76B'
+          return ['i95-sb-76b', Time.now, 37.554261, -77.446142, 'success']
+        end
+
+      elsif interstate == 'I95' and direction == 'NB'
+        if exit_number == '74'
+          return ['i95-nb-74', Time.now, 37.530224, -77.429707,  'success']
+        elsif exit_number == '75'
+          return ['i95-nb-75', Time.now, 37.544999, -77.428322,  'success']
+        elsif exit_number == '77'
+          return ['i95-nb-77', Time.now, 37.559140, -77.452556,  'success']
+        elsif exit_number == '78'
+          return ['i95-nb-78', Time.now, 37.573674, -77.459253,  'success']
+        end
+      end
+      # }}}
     end
 
     # Try to clean up our blurb
@@ -192,6 +238,17 @@ class RichmondRephraser
     q.sub! '/', ' at '
     q.sub! /^RICH: /, ''
     q.sub! '&AMP;', ' and '
+
+    # More esoteric stuff
+    q.sub! '@LOWES', '1640 W BROAD ST'
+    q.sub! /\bCHIPP\b/, 'CHIPPENHAM PKWY'
+    q.sub! /\bVEN\b/, 'VENABLE ST'
+    q.sub! /\bCHA\b/, 'CHAMBERLAYNE AVE'
+
+    # 'W CRAWFORD ST' becomes 'E CRAWFORD AVE" as it crosses 'NORTH AVE'
+    # There is no 'E CRAWFORD ST'
+    q.sub! /\bE CRAWFORD ST(REET)?/, 'E CRAWFORD AVE'
+
     q += ', Richmond, VA'
 
     return @locator.query(q)

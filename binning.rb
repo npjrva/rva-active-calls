@@ -70,37 +70,48 @@ end
 date_range_seconds = DateTime.parse(last_time).to_time - DateTime.parse(first_time).to_time
 date_range_days = date_range_seconds / (24 * 60 * 60)
 
-db.execute("SELECT location, call_type "+
-           "FROM calls "+
-           #"LIMIT 5000 "+
-           ";"
-           ).each do |row|
+distinct_failed_geolocations = {}
+count_failed_geolocations = 0
+File.open("failures.txt",'w') do |fout|
+  db.execute("SELECT location, call_type "+
+             "FROM calls "+
+             #"LIMIT 5000 "+
+             ";"
+             ).each do |row|
 
-  location = row[0]
-  call_type = row[1]
+    location = row[0]
+    call_type = row[1]
 
-  #$stderr.puts "Location #{location}"
+    #$stderr.puts "Location #{location}"
 
-  result = geolocator.query(location)
-  next if nil == result[0]
+    result = geolocator.query(location)
+    if nil == result[0]
+      count_failed_geolocations += 1
+      unless distinct_failed_geolocations.include? location
+        fout.puts location
+        distinct_failed_geolocations[ location ] = 1
+      end
+      next
+    end
 
-  #$stderr.puts "--> latlon (#{result[2]}, #{result[3]})"
+    #$stderr.puts "--> latlon (#{result[2]}, #{result[3]})"
 
-  bin = nil
-  begin
-    bin = find_bin(result[2], result[3])
+    bin = nil
+    begin
+      bin = find_bin(result[2], result[3])
 
-  rescue Exception => e
-    $stderr.puts "\tOn #{location} result #{result.join ', '} is out of viewport"
-    next
+    rescue Exception => e
+      $stderr.puts "\tOn #{location} result #{result.join ', '} is out of viewport"
+      next
+    end
+
+    #$stderr.puts "Bin (#{bin.join ', '}) += #{call_type}"
+    bins2locs[bin] ||= {}
+    bins2locs[bin][location] = 1
+    bins2evts[bin] ||= {}
+    bins2evts[bin][call_type] ||= 0
+    bins2evts[bin][call_type]  += 1
   end
-
-  #$stderr.puts "Bin (#{bin.join ', '}) += #{call_type}"
-  bins2locs[bin] ||= {}
-  bins2locs[bin][location] = 1
-  bins2evts[bin] ||= {}
-  bins2evts[bin][call_type] ||= 0
-  bins2evts[bin][call_type]  += 1
 end
 
 count_nonempty_bins = 0
@@ -251,5 +262,6 @@ end
 
 raise "Failed" if failed
 
+$stderr.puts "See #{count_failed_geolocations} failed geolocations in failures.txt" if count_failed_geolocations > 0
 $stderr.puts "See #{count_nonempty_bins} bins in bins.txt"
 
