@@ -222,18 +222,23 @@ File.open("web/rva-geojson.js","w") do |jsout|
 
           histo.each_pair do |type,count|
 
+            cat = nil
             if type2category.include? type
               cat = type2category[type]
 
-              cat2count[cat] ||= 0
-              cat2count[cat]  += count
-
-              cat2evt[cat] ||= []
-              cat2evt[cat].append( [type,count] )
             else
-              $stderr.puts "Uncategorized type '#{type}'"
+              $stderr.puts "Uncategorized type(s), assuming 'Crime':" unless failed
+              $stderr.puts "1,\"#{type}\",Crime"
+              cat = 'Crime'
               failed = true # print all failures to reduce my iteration...
             end
+
+            cat2count[cat] ||= 0
+            cat2count[cat]  += count
+
+            cat2evt[cat] ||= []
+            cat2evt[cat].append( [type,count] )
+
           end
 
           cat2count.to_a.sort { |a,b| b[-1] <=> a[-1] }.each do |cat,cnt|
