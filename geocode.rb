@@ -106,7 +106,9 @@ class GoogleMapsGeolocator
       config.authentication_mode = Google::Maps::Configuration::API_KEY
       config.api_key = api_key
     end
-
+    # This is a paid API, confirm it isn't abused
+    @log = File.open('google-maps-api.log', 'a')
+    @log.puts "Created new geolocator: #{Time.now}"
     @stat_count_queries = 0
     @stat_count_hits = 0
   end
@@ -116,6 +118,7 @@ class GoogleMapsGeolocator
   def query(q)
     @stat_count_queries += 1
     begin
+      @log.puts "Q: '#{q}'"
       r = Google::Maps.geocode(q)
       @stat_count_hits += 1
       return ['google-maps',
@@ -276,13 +279,13 @@ class MemCacheAdapter
 
       else
         res = @locator.query(q)
-        @cache[q] = res[0...4] unless res[0] == nil
+        @cache[q] = res[0...4]
         return res
       end
 
     rescue => e
-      # Don't cache failure
-      return [nil, nil, nil, nil, nil]
+      # Cache failure
+      @cache[q] = [nil, nil, nil, nil]
     end
 
     return @cache[q] + ["mem-cache-hit"]
