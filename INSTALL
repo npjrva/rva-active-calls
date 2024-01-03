@@ -31,4 +31,8 @@ website './web/rva-geojson.js'
 
 ./binning.rb
 
+(6) I use the export-csv.rb script to export calendar-year 2023
+data as a CSV file:
+
+./export-csv.rb |tee 2023.csv
 
