@@ -16,8 +16,8 @@ VIEW_W=-77.601173
 
 N_CENTERS=10
 
-first_time = '2023-01-01 00:00:00'
-last_time = '2024-01-01 00:00:00'
+first_time = '2022-01-01 00:00:00'
+last_time = '2023-01-01 00:00:00'
 
 dbfile = File.expand_path "~/.rva-activecalls/db.sqlite3"
 cachefile = File.expand_path "~/.rva-activecalls/geolocation-cache.sqlite3"

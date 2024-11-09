@@ -82,14 +82,27 @@ class OpenStreetMapGeolocator
     @email = email
     @stat_count_queries = 0
     @stat_count_hits = 0
+    @stat_total_query_time = 0
+    @stat_max_query_time = 0
+
+    @last_report_time = Time.now
   end
 
-  attr_reader :stat_count_queries, :stat_count_hits
+  attr_reader :stat_count_queries, :stat_count_hits, :stat_total_query_time, :stat_max_query_time
 
   def query(q)
     @stat_count_queries += 1
 
+    start = Time.now
     r = @client.search(q: q, format: 'json', accept_language: 'en', email: @email)
+    query_time = Time.now - start
+    @stat_total_query_time += query_time
+    @stat_max_query_time = [@stat_max_query_time, query_time].max
+
+    if (start - @last_report_time) > 60
+      $stderr.puts "OpenStreetMaps: avg #{stat_avg_query_time} s/q; max #{stat_max_query_time} s/q; over N=#{stat_count_queries}"
+      @last_report_time = start
+    end
 
     #$stderr.puts("OpenStreetMaps(#{q}) -> #{r}")
     @stat_count_hits += 1
@@ -97,6 +110,10 @@ class OpenStreetMapGeolocator
       Time.now,
       r[0]["lat"].to_f, r[0]["lon"].to_f,
       'success']
+  end
+
+  def stat_avg_query_time
+    return @stat_total_query_time / @stat_count_queries
   end
 end
 
@@ -111,15 +128,29 @@ class GoogleMapsGeolocator
     @log.puts "Created new geolocator: #{Time.now}"
     @stat_count_queries = 0
     @stat_count_hits = 0
+    @stat_total_query_time = 0
+    @stat_max_query_time = 0
+
+    @last_report_time = Time.now
   end
 
-  attr_reader :stat_count_queries, :stat_count_hits
+  attr_reader :stat_count_queries, :stat_count_hits, :stat_total_query_time, :stat_max_query_time
 
   def query(q)
     @stat_count_queries += 1
     begin
       @log.puts "Q: '#{q}'"
+      start = Time.now
       r = Google::Maps.geocode(q)
+      query_time = Time.now - start
+      @stat_total_query_time += query_time
+      @stat_max_query_time = [@stat_max_query_time, query_time].max
+
+      if (start - @last_report_time) > 60
+        $stderr.puts "GoogleMaps: avg #{stat_avg_query_time} s/q; max #{stat_max_query_time} s/q; over N=#{stat_count_queries}"
+        @last_report_time = start
+      end
+
       @stat_count_hits += 1
       return ['google-maps',
               Time.now,
@@ -128,9 +159,16 @@ class GoogleMapsGeolocator
 
     rescue Google::Maps::ZeroResultsException => e
       $stderr.puts "Zero results for '#{q}' because '#{e.to_s}'"
+
+    rescue => e
+      $stderr.puts "Some other failure: #{e.to_s}"
     end
 
     return [nil,nil,nil,nil,nil]
+  end
+
+  def stat_avg_query_time
+    return @stat_total_query_time / @stat_count_queries
   end
 end
 
@@ -138,23 +176,54 @@ end
 class ThrottleAdaptor
   def initialize(max_queries_per_second, locator)
     @query_interval = 1 / max_queries_per_second.to_f
-    @last_time = nil
+    @last_time = Time.now
     @locator = locator
 
     @stat_total_throttle = 0
+    @num_queries = 0
+    @last_report_time = @last_time
   end
 
   attr_reader :stat_total_throttle
 
   def query(q)
     now = Time.now
-    unless nil == @last_time
-      lapse = now - @last_time
-      if lapse < @query_interval
-        throttle = @query_interval - lapse
-        sleep( throttle )
-        @stat_total_throttle += throttle
-      end
+    @num_queries += 1
+    lapse = now - @last_time
+    if lapse < @query_interval
+      throttle = @query_interval - lapse
+      sleep( throttle )
+      @stat_total_throttle += throttle
+    end
+    @last_time = now
+
+    if (now - @last_report_time) > 60
+      $stderr.puts "ThrottleAdaptor: slept #{@stat_total_throttle} seconds over #{num_queries} queries"
+      @last_report_time = now
+    end
+    return @locator.query(q)
+  end
+end
+
+# Similar to ThrottleAdaptor, but instead of sleeping, immediately
+# return a failure.
+class ThrottleOrFailAdaptor
+  def initialize(max_queries_per_second, locator)
+    @query_interval = 1 / max_queries_per_second.to_f
+    @last_time = Time.now
+    @locator = locator
+
+    @num_queries = 0
+    @num_throttle_fails = 0;
+  end
+
+  def query(q)
+    now = Time.now
+    @num_queries += 1
+    lapse = now - @last_time
+    if lapse < @query_interval
+      @num_throttle_fails += 1
+      return [nil,nil,nil,nil,nil]
     end
     @last_time = now
 

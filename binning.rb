@@ -26,9 +26,9 @@ geolocator = RichmondRephraser.new(
               MemCacheAdapter.new(
                 DiskCacheAdapter.new(cachefile,
                     PrioritizedGeolocator.new([
-                      BoundingBoxFilter.new( OpenStreetMapGeolocator.new(email=OPEN_STREET_MAPS_EMAIL)),
-                      BoundingBoxFilter.new(ThrottleAdaptor.new(50,
-                        GoogleMapsGeolocator.new(api_key=GOOGLE_MAPS_API_KEY)))
+                      BoundingBoxFilter.new(ThrottleOrFailAdaptor.new(50,
+                        GoogleMapsGeolocator.new(api_key=GOOGLE_MAPS_API_KEY))),
+                      BoundingBoxFilter.new( OpenStreetMapGeolocator.new(email=OPEN_STREET_MAPS_EMAIL))
                     ]))))
 
 type2category = {}
@@ -101,7 +101,7 @@ File.open("failures.txt",'w') do |fout|
       bin = find_bin(result[2], result[3])
 
     rescue Exception => e
-      $stderr.puts "\tOn #{location} result #{result.join ', '} is out of viewport"
+      #$stderr.puts "\tOn #{location} result #{result.join ', '} is out of viewport"
       next
     end
 
