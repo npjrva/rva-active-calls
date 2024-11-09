@@ -335,13 +335,20 @@ class MemCacheAdapter
 
     @stat_count_queries = 0
     @stat_count_hits = 0
+
+    @last_report_time = Time.now
   end
 
   attr_reader :stat_count_queries, :stat_count_hits
 
   def query(q)
-    @stat_count_queries += 1
+    now = Time.now
+    if (now - @last_report_time) > 60
+      $stderr.puts "MemCacheAdapter: #{stat_count_hits} hits / #{stat_count_queries} queries"
+      @last_report_time = now
+    end
 
+    @stat_count_queries += 1
     begin
       if @cache.include? q
         @stat_count_hits += 1
@@ -370,14 +377,20 @@ class DiskCacheAdapter
     @stat_count_queries = 0
     @stat_count_hits = 0
 
+    @last_report_time = Time.now
     #@db.trace { |sql| $stderr.puts "TRACE #{sql}" }
   end
 
   attr_reader :stat_count_queries, :stat_count_hits
 
   def query(q)
+    now = Time.now
+    if (now - @last_report_time) > 60
+      $stderr.puts "DiskCacheAdapter: #{stat_count_hits} hits / #{stat_count_queries} queries"
+      @last_report_time = now
+    end
+ 
     @stat_count_queries += 1
-
     begin
       @db.execute("SELECT provenance, query_time, latitude, longitude "+
                   "FROM geolocation_cache "+

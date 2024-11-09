@@ -360,3 +360,19 @@
 1,"ASSAULT , BLS Not Dangerous Body Area",Crime
 1,"# TECHNICAL RESCUE , TRENCH INCIDENT",Emergency
 1,"EMS - AMBULANCE NEEDED , ALS BREATHING PROBLEM",Emergency
+1,"CRASH , BLS No Injuries - Unconfirmed",Traffic
+1,"OVERDOSE/POISONING , ALS Arrest",Mental
+1,"OVERDOSE/POISONING , ALS Changing Color",Mental
+1,"# EMS - 1ST RESP CALL (FIRE RESP ONLY) , EYE PROBLEM",Emergency
+1,"EMS - AMBULANCE NEEDED , BLS CRASH WITH INJURY",Traffic
+1,"EMS - AMBULANCE NEEDED , ALS UNCONSCIOUSNESS/FAINTING",Emergency
+1,"* ANIMAL-BITE , BLS Superficial Injuries",Emergency
+1,"COMMERCIAL MOTOR VEHICLE INSPECTION , OFFICER INITATED",Traffic
+1,"VEHICLE ESCORT , OFFICER INITATED",Discretionary
+1,"STABBING , ALS Multiple Wounds",Crime
+1,"CRASH , BLS 1st Party Not Dangerous Injury",Traffic
+1,"ASSAULT , BLS Serious Hemorrage",Crime
+1,"CHEMICAL MATERIALS , ALS Unconscious",Emergency
+1,"# SERVICE CALL , PUBLIC-ASSIST",Emergency
+1,"STABBING , ALS Multiple Wounds",Crime
+1,"CRASH , ALS Entrapment",Traffic
