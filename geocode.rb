@@ -24,10 +24,11 @@ class BoundingBoxFilter
     @geolocator = geolocator
 
     @stat_count_queries = 0
-    @stat_count_reject = 0
+    @stat_count_reject_bbox = 0
+    @stat_count_reject_center = 0
   end
 
-  attr_reader :stat_count_queries, :stat_count_reject
+  attr_reader :stat_count_queries, :stat_count_reject_bbox, :stat_count_reject_center
 
   def query(q)
     @stat_count_queries += 1
@@ -35,14 +36,18 @@ class BoundingBoxFilter
 
     if nil != r[0]
       if r[2] > N || r[3] > E || r[2] < S || r[3] < W
-        @stat_count_reject += 1
-        $stderr.puts "\tBBox rejects #{r.join ', '}"
+        @stat_count_reject_bbox += 1
+        if 0 == (@stat_count_reject_bbox % 25)
+          $stderr.puts "\tBBox rejected #{@stat_count_reject_bbox}"
+        end
         return [nil,nil,nil,nil,nil]
       end
 
       if (r[2] - FORBIDDEN_LAT).abs < EPS && (r[3] - FORBIDDEN_LON).abs < EPS
-        @stat_count_reject += 1
-        $stderr.puts "\tForbidden center rejects #{r.join ', '}"
+        @stat_count_reject_center += 1
+        if 0 == (@stat_count_reject_center % 25)
+          $stderr.puts "\tForbidden center rejected #{@stat_count_reject_center}"
+        end
         return [nil,nil,nil,nil,nil]
       end
 
@@ -314,23 +319,28 @@ class RichmondRephraser
 
     # More esoteric stuff
     q.sub! '@LOWES', '1640 W BROAD ST'
-    q.sub! /\bCHIPP\b/, 'CHIPPENHAM PKWY'
-    q.sub! /\bVEN\b/, 'VENABLE ST'
-    q.sub! /\bCHAM\b/, 'CHAMBERLAYNE AVE'
+    q.sub! /\bACOM\b/, 'ACCOMMODATION ST'
+    q.sub! /\bACCOMODATION\b/, 'ACCOMMODATION'
+    q.sub! /\bCRE\b/, 'CREIGHTON CT'
     q.sub! /\bCHA\b/, 'CHAMBERLAYNE AVE'
-    q.sub! /\bMONU\b/, 'MONUMENT AVE'
-    q.sub! /\bSEMIN\b/, 'SEMINARY AVE'
-    q.sub! /\bMIDLO\b/, 'MIDLOTHIAN TPKE'
-    q.sub! /\bLABUR\b/, 'LABURNUM AVE'
-    q.sub! /\bWHITC\b/, 'WHITCOMB ST'
-    q.sub! /\bWHIT\b/, 'WHITCOMB ST'
-    q.sub! /\bMAUR\b/, 'MAURY ST'
-    q.sub! /\bIDL\b/, 'IDLEWOOD AVE'
+    q.sub! /\bCHAM\b/, 'CHAMBERLAYNE AVE'
+    q.sub! /\bCHIPP\b/, 'CHIPPENHAM PKWY'
     q.sub! /\bCOWARDINAN\b/, 'COWARDIN AVE'
     q.sub! /\bCOWARDANAN\b/, 'COWARDIN AVE'
+    q.sub! /\bCOWARDANIN\b/, 'COWARDIN AVE'
     q.sub! /\bHANO\b/, 'HANOVER AVE'
-    q.sub! /\bCRE\b/, 'CREIGHTON CT'
+    q.sub! /\bHUGENOT\b/, 'HUGUENOT'
+    q.sub! /\bIDL\b/, 'IDLEWOOD AVE'
+    q.sub! /\bLABUR\b/, 'LABURNUM AVE'
+    q.sub! /\bMAUR\b/, 'MAURY ST'
+    q.sub! /\bMIDLO\b/, 'MIDLOTHIAN TPKE'
     q.sub! /\bMONTARIO\b/, 'MONTEIRO'
+    q.sub! /\bMONU\b/, 'MONUMENT AVE'
+    q.sub! /\bSEM\b/, 'SEMINARY AVE'
+    q.sub! /\bSEMIN\b/, 'SEMINARY AVE'
+    q.sub! /\bVEN\b/, 'VENABLE ST'
+    q.sub! /\bWHIT\b/, 'WHITCOMB ST'
+    q.sub! /\bWHITC\b/, 'WHITCOMB ST'
 
     # 'W CRAWFORD ST' becomes 'E CRAWFORD AVE" as it crosses 'NORTH AVE'
     # There is no 'E CRAWFORD ST'
