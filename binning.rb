@@ -107,7 +107,8 @@ File.open("failures.txt",'w') do |fout|
 
     #$stderr.puts "Bin (#{bin.join ', '}) += #{call_type}"
     bins2locs[bin] ||= {}
-    bins2locs[bin][location] = 1
+    bins2locs[bin][location] ||= 0
+    bins2locs[bin][location] += 1
     bins2evts[bin] ||= {}
     bins2evts[bin][call_type] ||= 0
     bins2evts[bin][call_type]  += 1
@@ -172,14 +173,14 @@ File.open("web/rva-geojson.js","w") do |jsout|
       bin = centers[idx][-1]
       char = (65 + idx).chr
       fout.puts "#{char} num events #{sums} at (#{bin[0]}, #{bin[1]})"
-      ( bins2locs[bin] || {}).keys.each do |loc|
-        fout.puts "\t#{loc}"
+      h_bin = bins2locs[bin] || {}
+      h_bin.each_pair do |loc,count|
+        fout.puts "\t(#{count}) #{loc}"
       end
       fout.puts
 
 
     end
-   
     #}}}
 
     BIN_HEIGHT.times do |y|
@@ -191,7 +192,8 @@ File.open("web/rva-geojson.js","w") do |jsout|
         sums = histo.values.sum
 
         fout.puts "Bin #{x}, #{y}       #{sums} events / #{histo.size} types"
-        ( bins2locs[bin] || {}).keys.each do |loc|
+        h_bin = bins2locs[bin] || {}
+        h_bin.keys.each do |loc|
           fout.puts "\t#{loc}"
         end
         fout.puts
@@ -202,7 +204,7 @@ File.open("web/rva-geojson.js","w") do |jsout|
         ee = VIEW_W + (x+0) * (VIEW_E - VIEW_W) / BIN_WIDTH
         ww = VIEW_W + (x+1) * (VIEW_E - VIEW_W) / BIN_WIDTH
 
-        name = ( bins2locs[bin] || {}).keys.join "; "
+        name = h_bin.keys.map{|loc| "#{loc} (#{h_bin[loc]})"}.join "; "
 
         json ={'type' => 'Feature',
                'id' => "#{x}_#{y}",
